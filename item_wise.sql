@@ -36,5 +36,5 @@ WHERE
   AND od.state NOT IN ('done', 'closed')
   AND od.fg_balance > 0
 
-GROUP BY COALESCE(apt.name ->> 'en_US', apt.name::text), od.fg_categ_type
+GROUP BY od.fg_categ_type
 ORDER BY "Item";
