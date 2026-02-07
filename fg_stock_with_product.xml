@@ -1,0 +1,311 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="fg_stock_dashboard_template" owl="1">
+        <div class="fg_dashboard" style="height: 90vh; overflow-y: auto; background: #f0f2f5; padding: 0;">
+            <!-- Minimal Dashboard Header -->
+            <div class="dashboard-header">
+                <div class="dashboard-title">FG Stock</div>
+                <div class="filter-section" style="display: flex; gap: 15px; align-items: center;">
+                    <div style="display: flex; align-items: center; gap: 5px;">
+                        <label for="company_id" style="font-weight: 600; color: #64748b; font-size: 11px;">Company:</label>
+                        <select id="company_id" t-on-change="onCompanyChange" style="padding: 4px 8px; border-radius: 4px; border: 1px solid #e2e8f0; font-size: 11px; min-width: 120px;">
+                            <t t-foreach="state.companies" t-as="company" t-key="company.id">
+                                <option t-att-value="company.id" t-att-selected="state.filters.company_id === company.id">
+                                    <t t-esc="company.name"/>
+                                </option>
+                            </t>
+                        </select>
+                            <Many2One 
+                                t-key="'team-' + (state.selectedTeam?.id || 'empty')"
+                                records="state.teamOptions" 
+                                field="'name'"
+                                value="state.selectedTeam?.id"
+                                onSelect="(record) => this.onTeamSelect(record)" 
+                                placeholder="'Sales Team'"
+                            />
+                            <Many2One 
+                                t-key="'salesperson-' + (state.selectedSalesperson?.id || 'empty')"
+                                records="state.salespersonOptions" 
+                                field="'name'"
+                                value="state.selectedSalesperson?.id"
+                                onSelect="(record) => this.onSalespersonSelect(record)" 
+                                placeholder="'Salesperson'"
+                            />
+                    </div>
+                     <button class="btn stylish-btn d-flex align-items-center gap-1 py-0 px-3"
+                        t-on-click="downloadExcel"
+                        title="Download Excel Report"
+                        style="font-size: 0.65rem; height: 1.4rem;">
+                        <img src="taps_purchase/static/src/img/excel.png"
+                             alt="Excel Download"
+                             style="width: 12px; height: 12px;" />
+                        Excel
+                    </button>
+                </div>
+            </div>
+
+            <t t-if="state.loading">
+                <div class="text-center my-5">
+                    <div class="spinner-border" style="color: #8b3a62;" role="status">
+                        <span class="sr-only">Loading...</span>
+                    </div>
+                </div>
+            </t>
+
+            <div class="content-container" t-if="!state.loading">
+                <!-- Summary Totals Section -->
+                <div class="summary-cards">
+                    <div class="stat-card">
+                        <span class="stat-label">Total FG Balance</span>
+                        <span class="stat-value"><t t-esc="formatValue(state.totals.balance, 1)"/></span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-label">Total FG Value</span>
+                        <span class="stat-value text-success"><t t-esc="formatValue(state.totals.value, 2)"/></span>
+                    </div>
+                    <div class="stat-card" style="border-left-color: #f59e0b;">
+                        <span class="stat-label">0-5 Days Summary</span>
+                        <div style="display: flex; gap: 15px; align-items: baseline;">
+                            <div>
+                                <div style="font-size: 10px; color: #64748b; font-weight: 500;">BAL</div>
+                                <div style="font-size: 18px; font-weight: 700;"><t t-esc="formatValue(state.totals.balance_0_5, 1)"/></div>
+                            </div>
+                            <div>
+                                <div style="font-size: 10px; color: #64748b; font-weight: 500;">VAL</div>
+                                <div style="font-size: 18px; font-weight: 700; color: #059669;"><t t-esc="formatValue(state.totals.value_0_5, 2)"/></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="stat-card" style="border-left-color: #ef4444;">
+                        <span class="stat-label">30+ Days Summary</span>
+                        <div style="display: flex; gap: 15px; align-items: baseline;">
+                            <div>
+                                <div style="font-size: 10px; color: #64748b; font-weight: 500;">BAL</div>
+                                <div style="font-size: 18px; font-weight: 700; color: #ef4444;"><t t-esc="formatValue(state.totals.balance_30_plus, 1)"/></div>
+                            </div>
+                            <div>
+                                <div style="font-size: 10px; color: #64748b; font-weight: 500;">VAL</div>
+                                <div style="font-size: 18px; font-weight: 700; color: #ef4444;"><t t-esc="formatValue(state.totals.value_30_plus, 2)"/></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Dashboard Content Tables -->
+                <div>
+                    <!-- Payment Terms Section -->
+                    <div class="table-box">
+                        <div class="table-header">Aging by Payment Terms</div>
+                        <t t-call="aging_table">
+                            <t t-set="title" t-value="'Payment Term'"/>
+                            <t t-set="data" t-value="state.data.payment_terms"/>
+                            <t t-set="group_field" t-value="'Payment Terms'"/>
+                            <t t-set="group_type" t-value="'payment_terms'"/>
+                            <t t-set="totals" t-value="state.table_totals.payment_terms"/>
+                        </t>
+                    </div>
+
+                    <!-- Item Category Section -->
+                    <div class="table-box">
+                        <div class="table-header">Aging by Item Category</div>
+                        <t t-call="aging_table">
+                            <t t-set="title" t-value="'Item Category'"/>
+                            <t t-set="data" t-value="state.data.item_category"/>
+                            <t t-set="group_field" t-value="'Item'"/>
+                            <t t-set="group_type" t-value="'item_category'"/>
+                            <t t-set="totals" t-value="state.table_totals.item_category"/>
+                        </t>
+                    </div>
+
+                    <!-- Customer Section -->
+                    <div class="table-box">
+                        <div class="table-header" t-on-click="() => state.showCustomer = !state.showCustomer" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;">
+                            <div>Aging by Customer</div>
+                            <button class="btn btn-sm btn-link p-0 text-decoration-none" style="font-size: 11px; font-weight: 600; color: #4f46e5;">
+                                <t t-if="state.showCustomer">Hide <i class="fa fa-chevron-up"/></t>
+                                <t t-else="">Show <i class="fa fa-chevron-down"/></t>
+                            </button>
+                        </div>
+                        <t t-if="state.showCustomer">
+                            <t t-call="aging_table">
+                                <t t-set="title" t-value="'Customer'"/>
+                                <t t-set="data" t-value="state.data.customer"/>
+                                <t t-set="group_field" t-value="'Customer'"/>
+                                <t t-set="group_type" t-value="'customer'"/>
+                                <t t-set="totals" t-value="state.table_totals.customer"/>
+                            </t>
+                        </t>
+                    </div>
+
+                    <!-- Buyer Section -->
+                    <div class="table-box">
+                        <div class="table-header" t-on-click="() => state.showBuyer = !state.showBuyer" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;">
+                            <div>Aging by Buyer</div>
+                            <button class="btn btn-sm btn-link p-0 text-decoration-none" style="font-size: 11px; font-weight: 600; color: #4f46e5;">
+                                <t t-if="state.showBuyer">Hide <i class="fa fa-chevron-up"/></t>
+                                <t t-else="">Show <i class="fa fa-chevron-down"/></t>
+                            </button>
+                        </div>
+                        <t t-if="state.showBuyer">
+                            <t t-call="aging_table">
+                                <t t-set="title" t-value="'Buyer'"/>
+                                <t t-set="data" t-value="state.data.buyer"/>
+                                <t t-set="group_field" t-value="'Buyer'"/>
+                                <t t-set="group_type" t-value="'buyer'"/>
+                                <t t-set="totals" t-value="state.table_totals.buyer"/>
+                            </t>
+                        </t>
+                    </div>
+                </div>
+
+                <!-- Drilldown Modal -->
+                <t t-if="state.modal.show">
+                    <div class="drilldown-modal-overlay" t-on-click="closeModal">
+                        <div class="drilldown-modal" t-on-click.stop="">
+                            <div class="modal-header">
+                                <div class="modal-title"><t t-esc="state.modal.title"/></div>
+                                <div class="modal-actions" style="display: flex; gap: 10px; align-items: center;">
+                                    <button class="btn stylish-btn d-flex align-items-center gap-1 py-0 px-3"
+                                        t-on-click="downloadDrilldownExcel"
+                                        title="Download Excel Report"
+                                        style="font-size: 0.65rem; height: 1.4rem;">
+                                        <img src="taps_purchase/static/src/img/excel.png"
+                                             alt="Excel Download"
+                                             style="width: 10px; height: 10px;" />
+                                        Excel
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="modal-body">
+                                <t t-if="state.modal.loading">
+                                    <div class="text-center p-5">
+                                        <div class="spinner-border text-primary" role="status">
+                                            <span class="sr-only">Loading...</span>
+                                        </div>
+                                    </div>
+                                </t>
+                                <t t-else="">
+                                    <div class="table-responsive">
+                                        <table class="table table-sm table-hover">
+                                            <thead style="position: sticky; top: 0; background: #f8fafc; z-index: 1;">
+                                                <tr>
+                                                    <th>OA</th>
+                                                    <th>Category</th>
+                                                    <th>Product</th>
+                                                    <th class="text-end">Qty</th>
+                                                    <th class="text-end">Value</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <t t-if="state.modal.data.length === 0">
+                                                    <tr><td colspan="4" class="text-center p-4 text-muted">No details found</td></tr>
+                                                </t>
+                                                <t t-foreach="state.modal.data" t-as="item" t-key="item.OA + item.Product + item.Category">
+                                                    <tr>
+                                                        <td style="font-weight: 600;"><t t-esc="item.OA"/></td>
+                                                        <td><t t-esc="item.Category"/></td>
+                                                        <td><t t-esc="item.Product"/></td>
+                                                        <td class="text-end"><t t-esc="item.Qty?.toLocaleString()"/></td>
+                                                        <td class="text-end" style="font-weight: 600;"><t t-esc="item.Value?.toLocaleString()"/></td>
+                                                    </tr>
+                                                </t>
+                                            </tbody>
+                                            <tfoot style="position: sticky; bottom: 0; background: #f1f5f9; z-index: 1; font-weight: 800;">
+                                                <tr>
+                                                    <td colspan="3" class="text-center">Total</td>
+                                                    <td class="text-end"><t t-esc="this.modalTotals.qty?.toLocaleString()"/></td>
+                                                    <td class="text-end"><t t-esc="this.modalTotals.value?.toLocaleString()"/></td>
+                                                </tr>
+                                            </tfoot>
+                                        </table>
+                                    </div>
+                                </t>
+                            </div>
+                            <div class="modal-footer">
+                                <button class="btn btn-secondary" t-on-click="closeModal">Close</button>
+                            </div>
+                        </div>
+                    </div>
+                </t>
+            </div>
+        </div>
+    </t>
+
+    <!-- Sub-template for aging tables -->
+    <t t-name="aging_table" owl="1">
+        <table>
+            <thead>
+                <tr>
+                    <th rowspan="2" style="min-width: 150px; text-align: left;"><t t-esc="title"/></th>
+                    <th colspan="2" class="total-col">Total</th>
+                    <th colspan="2" class="shaded-col">0-5 Days</th>
+                    <th colspan="2">6-10 Days</th>
+                    <th colspan="2" class="shaded-col">11-15 Days</th>
+                    <th colspan="2">16-20 Days</th>
+                    <th colspan="2" class="shaded-col">21-25 Days</th>
+                    <th colspan="2">26-30 Days</th>
+                    <th colspan="2" class="shaded-col">30+ Days</th>
+                </tr>
+                <tr>
+                    <th style="width: 100px;" class="total-col">Total Balance</th><th style="width: 100px;" class="total-col val-col">Total Value</th>
+                    <th style="width: 100px;" class="shaded-col">Balance</th><th style="width: 100px;" class="shaded-col val-col">Value</th>
+                    <th style="width: 100px;">Balance</th><th style="width: 100px;" class="val-col">Value</th>
+                    <th style="width: 100px;" class="shaded-col">Balance</th><th style="width: 100px;" class="shaded-col val-col">Value</th>
+                    <th style="width: 100px;">Balance</th><th style="width: 100px;" class="val-col">Value</th>
+                    <th style="width: 100px;" class="shaded-col">Balance</th><th style="width: 100px;" class="shaded-col val-col">Value</th>
+                    <th style="width: 100px;">Balance</th><th style="width: 100px;" class="val-col">Value</th>
+                    <th style="width: 100px;" class="shaded-col">Balance</th><th style="width: 100px;" class="shaded-col val-col">Value</th>
+                </tr>
+            </thead>
+            <tbody>
+                <t t-if="data.length === 0">
+                    <tr>
+                        <td colspan="17" class="text-center" style="padding: 40px; color: #64748b; font-style: italic;">No data found for this company</td>
+                    </tr>
+                </t>
+                <t t-if="data.length > 0">
+                    <tr class="total-row" style="border-bottom: 2px solid #e2e8f0;">
+                        <td>Total</td>
+                        <td class="text-end total-col"><span class="clickable-num" t-on-click="() => this.onCellClick(totals, 'Total_Balance', group_type, 'Total Balance')"><t t-esc="totals['Total_Balance']?.toLocaleString(undefined, {maximumFractionDigits: 0})"/></span></td>
+                        <td class="text-end val-col total-col"><span class="clickable-num" t-on-click="() => this.onCellClick(totals, 'Total_Value', group_type, 'Total Value')"><t t-esc="totals['Total_Value']?.toLocaleString(undefined, {maximumFractionDigits: 0})"/></span></td>
+                        <td class="text-end shaded-col"><span class="clickable-num" t-on-click="() => this.onCellClick(totals, 'Balance_0-5', group_type, '0-5 Days Balance')"><t t-esc="totals['Balance_0-5']?.toLocaleString(undefined, {maximumFractionDigits: 0})"/></span></td>
+                        <td class="text-end val-col shaded-col"><span class="clickable-num" t-on-click="() => this.onCellClick(totals, 'Value_0-5', group_type, '0-5 Days Value')"><t t-esc="totals['Value_0-5']?.toLocaleString(undefined, {maximumFractionDigits: 0})"/></span></td>
+                        <td class="text-end"><span class="clickable-num" t-on-click="() => this.onCellClick(totals, 'Balance_6-10', group_type, '6-10 Days Balance')"><t t-esc="totals['Balance_6-10']?.toLocaleString(undefined, {maximumFractionDigits: 0})"/></span></td>
+                        <td class="text-end val-col"><span class="clickable-num" t-on-click="() => this.onCellClick(totals, 'Value_6-10', group_type, '6-10 Days Value')"><t t-esc="totals['Value_6-10']?.toLocaleString(undefined, {maximumFractionDigits: 0})"/></span></td>
+                        <td class="text-end shaded-col"><span class="clickable-num" t-on-click="() => this.onCellClick(totals, 'Balance_11-15', group_type, '11-15 Days Balance')"><t t-esc="totals['Balance_11-15']?.toLocaleString(undefined, {maximumFractionDigits: 0})"/></span></td>
+                        <td class="text-end val-col shaded-col"><span class="clickable-num" t-on-click="() => this.onCellClick(totals, 'Value_11-15', group_type, '11-15 Days Value')"><t t-esc="totals['Value_11-15']?.toLocaleString(undefined, {maximumFractionDigits: 0})"/></span></td>
+                        <td class="text-end"><span class="clickable-num" t-on-click="() => this.onCellClick(totals, 'Balance_16-20', group_type, '16-20 Days Balance')"><t t-esc="totals['Balance_16-20']?.toLocaleString(undefined, {maximumFractionDigits: 0})"/></span></td>
+                        <td class="text-end val-col"><span class="clickable-num" t-on-click="() => this.onCellClick(totals, 'Value_16-20', group_type, '16-20 Days Value')"><t t-esc="totals['Value_16-20']?.toLocaleString(undefined, {maximumFractionDigits: 0})"/></span></td>
+                        <td class="text-end shaded-col"><span class="clickable-num" t-on-click="() => this.onCellClick(totals, 'Balance_21-25', group_type, '21-25 Days Balance')"><t t-esc="totals['Balance_21-25']?.toLocaleString(undefined, {maximumFractionDigits: 0})"/></span></td>
+                        <td class="text-end val-col shaded-col"><span class="clickable-num" t-on-click="() => this.onCellClick(totals, 'Value_21-25', group_type, '21-25 Days Value')"><t t-esc="totals['Value_21-25']?.toLocaleString(undefined, {maximumFractionDigits: 0})"/></span></td>
+                        <td class="text-end"><span class="clickable-num" t-on-click="() => this.onCellClick(totals, 'Balance_26-30', group_type, '26-30 Days Balance')"><t t-esc="totals['Balance_26-30']?.toLocaleString(undefined, {maximumFractionDigits: 0})"/></span></td>
+                        <td class="text-end val-col"><span class="clickable-num" t-on-click="() => this.onCellClick(totals, 'Value_26-30', group_type, '26-30 Days Value')"><t t-esc="totals['Value_26-30']?.toLocaleString(undefined, {maximumFractionDigits: 0})"/></span></td>
+                        <td class="text-end text-red shaded-col"><span class="clickable-num" t-on-click="() => this.onCellClick(totals, 'Balance_30+', group_type, '30+ Days Balance')"><t t-esc="totals['Balance_30+']?.toLocaleString(undefined, {maximumFractionDigits: 0})"/></span></td>
+                        <td class="text-end text-red shaded-col"><span class="clickable-num" t-on-click="() => this.onCellClick(totals, 'Value_30+', group_type, '30+ Days Value')"><t t-esc="totals['Value_30+']?.toLocaleString(undefined, {maximumFractionDigits: 0})"/></span></td>
+                    </tr>
+                </t>
+                <t t-foreach="data" t-as="row" t-key="row[group_field]">
+                    <tr>
+                        <td style="font-weight: 600; color: #1e293b;"><t t-esc="row[group_field]"/></td>
+                        <td class="text-end total-col" style="font-weight: 600;"><span class="clickable-num" t-on-click="() => this.onCellClick(row, 'Total_Balance', group_type, 'Total Balance')"><t t-esc="row['Total_Balance']?.toLocaleString(undefined, {maximumFractionDigits: 0})"/></span></td>
+                        <td class="text-end val-col total-col" style="font-weight: 600;"><span class="clickable-num" t-on-click="() => this.onCellClick(row, 'Total_Value', group_type, 'Total Value')"><t t-esc="row['Total_Value']?.toLocaleString(undefined, {maximumFractionDigits: 0})"/></span></td>
+                        <td class="text-end shaded-col"><span class="clickable-num" t-on-click="() => this.onCellClick(row, 'Balance_0-5', group_type, '0-5 Days Balance')"><t t-esc="row['Balance_0-5']?.toLocaleString(undefined, {maximumFractionDigits: 0})"/></span></td>
+                        <td class="text-end val-col shaded-col"><span class="clickable-num" t-on-click="() => this.onCellClick(row, 'Value_0-5', group_type, '0-5 Days Value')"><t t-esc="row['Value_0-5']?.toLocaleString(undefined, {maximumFractionDigits: 0})"/></span></td>
+                        <td class="text-end"><span class="clickable-num" t-on-click="() => this.onCellClick(row, 'Balance_6-10', group_type, '6-10 Days Balance')"><t t-esc="row['Balance_6-10']?.toLocaleString(undefined, {maximumFractionDigits: 0})"/></span></td>
+                        <td class="text-end val-col"><span class="clickable-num" t-on-click="() => this.onCellClick(row, 'Value_6-10', group_type, '6-10 Days Value')"><t t-esc="row['Value_6-10']?.toLocaleString(undefined, {maximumFractionDigits: 0})"/></span></td>
+                        <td class="text-end shaded-col"><span class="clickable-num" t-on-click="() => this.onCellClick(row, 'Balance_11-15', group_type, '11-15 Days Balance')"><t t-esc="row['Balance_11-15']?.toLocaleString(undefined, {maximumFractionDigits: 0})"/></span></td>
+                        <td class="text-end val-col shaded-col"><span class="clickable-num" t-on-click="() => this.onCellClick(row, 'Value_11-15', group_type, '11-15 Days Value')"><t t-esc="row['Value_11-15']?.toLocaleString(undefined, {maximumFractionDigits: 0})"/></span></td>
+                        <td class="text-end"><span class="clickable-num" t-on-click="() => this.onCellClick(row, 'Balance_16-20', group_type, '16-20 Days Balance')"><t t-esc="row['Balance_16-20']?.toLocaleString(undefined, {maximumFractionDigits: 0})"/></span></td>
+                        <td class="text-end val-col"><span class="clickable-num" t-on-click="() => this.onCellClick(row, 'Value_16-20', group_type, '16-20 Days Value')"><t t-esc="row['Value_16-20']?.toLocaleString(undefined, {maximumFractionDigits: 0})"/></span></td>
+                        <td class="text-end shaded-col"><span class="clickable-num" t-on-click="() => this.onCellClick(row, 'Balance_21-25', group_type, '21-25 Days Balance')"><t t-esc="row['Balance_21-25']?.toLocaleString(undefined, {maximumFractionDigits: 0})"/></span></td>
+                        <td class="text-end val-col shaded-col"><span class="clickable-num" t-on-click="() => this.onCellClick(row, 'Value_21-25', group_type, '21-25 Days Value')"><t t-esc="row['Value_21-25']?.toLocaleString(undefined, {maximumFractionDigits: 0})"/></span></td>
+                        <td class="text-end"><span class="clickable-num" t-on-click="() => this.onCellClick(row, 'Balance_26-30', group_type, '26-30 Days Balance')"><t t-esc="row['Balance_26-30']?.toLocaleString(undefined, {maximumFractionDigits: 0})"/></span></td>
+                        <td class="text-end val-col"><span class="clickable-num" t-on-click="() => this.onCellClick(row, 'Value_26-30', group_type, '26-30 Days Value')"><t t-esc="row['Value_26-30']?.toLocaleString(undefined, {maximumFractionDigits: 0})"/></span></td>
+                        <td class="text-end text-red shaded-col"><span class="clickable-num" t-on-click="() => this.onCellClick(row, 'Balance_30+', group_type, '30+ Days Balance')"><t t-esc="row['Balance_30+']?.toLocaleString(undefined, {maximumFractionDigits: 0})"/></span></td>
+                        <td class="text-end text-red shaded-col" style="font-weight: 600;"><span class="clickable-num" t-on-click="() => this.onCellClick(row, 'Value_30+', group_type, '30+ Days Value')"><t t-esc="row['Value_30+']?.toLocaleString(undefined, {maximumFractionDigits: 0})"/></span></td>
+                    </tr>
+                </t>
+            </tbody>
+        </table>
+    </t>
+</templates>
